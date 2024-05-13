@@ -15,6 +15,9 @@ class Cube {
       this.u_whichTexture
       this.uv = []
       this.vertexBuffer = null;
+      this.x;
+      this.y;
+      this.z;
     }
 
     // In initVertexArray, specify the texture coordinates (draw it out)

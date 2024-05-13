@@ -115,7 +115,7 @@ var viewMat = new Matrix4()
 var game_red_i = []
 var game_found_i = []
 g_map = [
- [ 1, 0, 0, 0, 1, 1, 1, 1,0, 0, 0, 1, 1, 1, 1, 1,1, 0, 0, 0, 1, 1, 1, 1,1, 0, 0, 0, 1, 1, 1, 1], 
+ [ 1, 0, 0, 0, 1, 0, 0, 1,0, 0, 0, 1, 0, 1, 0, 1,0, 0, 0, 0, 1, 1, 0, 0,0, 0, 0, 0, 1, 0, 0, 1], 
  [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
  [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
  [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
@@ -147,7 +147,7 @@ g_map = [
  [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
  [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
  [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
- [ 1, 1, 1, 1, 0, 0, 0, 1,1, 1, 1, 1, 1, 1, 1, 1,1, 1, 1, 1, 1, 1, 1, 1,1, 1, 1, 1, 1, 1, 1, 1]
+ [ 1, 0, 1, 0, 0, 0, 0, 1,0, 0, 1, 0, 0, 1, 0, 1,1, 0, 1, 1, 0, 1, 0, 1,1, 1, 0, 1, 1, 0, 1, 1]
 ];
 
 class Camera {
@@ -194,6 +194,7 @@ class Camera {
     this.temp_at.sub(this.eye)
     this.temp_at.normalize()
     this.temp_at.mul(1)
+    console.log("temp_at", this.temp_at)
     this.eye.add(this.temp_at)
     this.at.add(this.temp_at)
   } 
@@ -210,6 +211,7 @@ class Camera {
     this.side = Vector3.cross(this.up, this.forward)
     this.side.normalize()
     this.side.mul(1)
+    console.log("side", side)
     this.eye.add(this.side)
     this.at.add(this.side)
   }  
@@ -523,6 +525,9 @@ function f_g_map() {
             var body = new Cube()
             body.color = [1,1,1,1]
             body.matrix.translate(a-4,x,b-8)
+            body.x = a-4;
+            body.y = x;
+            body.z = b - 8;
             walls.push(body)
           }
         }
@@ -544,22 +549,22 @@ function check_collision() {
   for (var g = 0; g < game_red_i.length; g++) {
     c = 0;
     var index = game_red_i[g];
-    x = walls[index].matrix.elements[12]
-    y = walls[index].matrix.elements[13] 
-    z = walls[index].matrix.elements[14]
-    console.log("x y z: ", walls[index].matrix.elements.slice(12, 15))
-    console.log("eye: ", pov.eye.elements)
-    console.log("at: ", pov.at.elements);
-    console.log("up: ", pov.up.elements)
+    console.log(x)
+    y = walls[index].y
+    x = walls[index].x
+    // console.log("eye: ", pov.eye.elements)
+    // console.log("at: ", pov.at.elements);
+    // console.log("up: ", pov.up.elements)
     var neg = pov.eye.elements[2] * -1
-    console.log("Diff: ",    Math.abs(pov.eye.elements[0] - x),    Math.abs(pov.eye.elements[0] - x))
+    //console.log("x y ", x, y);
+    //console.log("Diff: ",    Math.abs(pov.eye.elements[0] - x),   Math.abs(neg - y))
     if (Math.abs(pov.eye.elements[0] - x) <= 3) {
       c++;
     }
     if (Math.abs(neg - y) <= 3) {
       c++
     }
-    console.log("c: ", c)
+    //console.log("c: ", c)
     if (c == 2 && !game_found_i[g]) {
       console.log("You found a block! You have found ", blocks_found + 1, "so far.")
       game_found_i[g] = true
@@ -602,9 +607,9 @@ function renderScene() {
   gl.uniform1i(u_whichTexture, -2);
   frag_cube.render()
   if (game) {
-    console.log("Collision Check")
+    //console.log("Collision Check")
     var ret = check_collision();  
-    console.log("Collision Check Complete")
+    //console.log("Collision Check Complete")
   }
   for (var w = 0; w < walls.length; w++) {
     if (game && walls[w].game_red) {
