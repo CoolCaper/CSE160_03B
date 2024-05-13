@@ -13,7 +13,7 @@ var VSHADER_SOURCE =
   'uniform mat4 u_ViewMatrix;\n' +
   'uniform mat4 u_ProjectionMatrix;\n' +
   'void main() {\n' +
-  '  gl_Position = u_globalRotateMatrix * u_ModelMatrix * a_Position * u_ViewMatrix * u_ProjectionMatrix;\n' +
+  '  gl_Position = u_ProjectionMatrix * u_ViewMatrix * u_globalRotateMatrix * u_ModelMatrix * a_Position;\n' +
   '  gl_PointSize = u_Size;\n' +
   '  v_UV = a_UV;\n'  +
   '}\n';
@@ -38,6 +38,9 @@ var FSHADER_SOURCE =
   '  };\n'+
   '}'
 //VARIABLE
+
+var game = false;
+var game_start = 0
 var gl;
 var canvas;
 var a_Position;
@@ -63,19 +66,21 @@ let leg2;
 let limb;
 let limb2
 let u_whichTexture;
-//let pyr; // can you share the server
-//it is shared 
-//as 't'
-//sorry I'm tired LOL
-//the
-// are you hosting the javascript
-//the server is running 
-// make sure you are running on 5500
-//I am
-// .. it works now
+let blocks_found = 0;
+let pov;
+
+var walls = [];
+var wall_mat;
+var rand;
+var coin_flip;
+
+var g_eye = [0, 0, 3]
+var g_at = [0, 0, -100]
+var g_up = [0, 1, 0]
+
 let pyramid;
 
-var start_time;
+var game_start_time;
 var g_startTime;
 var g_seconds;
 
@@ -97,23 +102,247 @@ var canvas;
 var u_ModelMatrix;
 var u_globalRotateMatrix;
 
-//var sphere = new Sphere([1, 0, 0, 1], [0, 0])
-//console.log(sphere)
+var game_start_time;
+let cube = new Cube(color=[1,0,0,1])
+let cube2 = new Cube(color=[1,0,0,1])
+let cube3 = new Cube(color=[0,0,1,1]) //sky
+let frag_cube = new Cube(color=[0,0,1,1],tex=-1) //blue cube
+
+
+var projMat = new Matrix4()
+var viewMat = new Matrix4()
+
+var game_red_i = []
+var game_found_i = []
+g_map = [
+ [ 1, 0, 0, 0, 1, 1, 1, 1,0, 0, 0, 1, 1, 1, 1, 1,1, 0, 0, 0, 1, 1, 1, 1,1, 0, 0, 0, 1, 1, 1, 1], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0,0, 0, 0, 0, 0, 0, 0, 0], 
+ [ 1, 1, 1, 1, 0, 0, 0, 1,1, 1, 1, 1, 1, 1, 1, 1,1, 1, 1, 1, 1, 1, 1, 1,1, 1, 1, 1, 1, 1, 1, 1]
+];
+
+class Camera {
+  constructor(fov=60.0,eye = [0,0,0], at = [0, 0, -1], up=[0,1,0]) {
+    this.fov = fov
+    this.eye = new Vector3(eye)
+    this.at = new Vector3(at)
+    this.up = new Vector3(up)
+    this.forward = new Vector3(this.at.elements)
+    this.forward.sub(this.eye);
+    this.backward = new Vector3(this.eye.elements);
+    this.backward.sub(this.at)
+    this.temp_at = new Vector3()
+    this.temp_at.set(this.at)
+    this.side = new Vector3()
+    //matrices
+    this.rot_mat = new Matrix4()
+    //this.rot_mat.setIdentity()
+
+    this.cam_view = new Matrix4()
+    //this.cam_view.setIdentity()
+    this.cam_view.setLookAt(
+      eye[0], at[0],up[0],
+      
+      eye[1], at[1],up[1],
+      
+      eye[2], at[2],up[2]
+    )
+    
+    this.cam_proj = new Matrix4()
+    //this.cam_proj.setIdentity() //possibly get rid of this depending on how set look at works
+    this.cam_proj.setPerspective(fov, canvas.width/canvas.height, .1, 1000)
+// projectionMatrix (Matrix4), initialize it with projectionMatrix.setPerspective(fov, canvas.width/canvas.height, 0.1, 1000).
+// viewMatrix (Matrix4), initialize it with viewMatrix.setLookAt(eye.elements[0], ... at.elements[0], ..., up.elements[0], ...). 
+// projectionMatrix (Matrix4), initialize it with projectionMatrix.setPerspective(fov, canvas.width/canvas.height, 0.1, 1000).
+  }
+
+  get_forward_vector() {
+    this.forward.set(this.at)
+    this.forward.sub(this.eye)
+  }
+  move_forward() {
+    this.temp_at.set(this.at)
+    this.temp_at.sub(this.eye)
+    this.temp_at.normalize()
+    this.temp_at.mul(1)
+    this.eye.add(this.temp_at)
+    this.at.add(this.temp_at)
+  } 
+  move_backward() {
+    this.temp_at.set(this.eye) //this will be eye - at instead of at - eye
+    this.temp_at.sub(this.at)
+    this.temp_at.normalize()
+    this.temp_at.mul(1)
+    this.eye.add(this.temp_at)
+    this.at.add(this.temp_at)
+  }
+  left() {
+    this.get_forward_vector()
+    this.side = Vector3.cross(this.up, this.forward)
+    this.side.normalize()
+    this.side.mul(1)
+    this.eye.add(this.side)
+    this.at.add(this.side)
+  }  
+
+  right() {
+    this.get_forward_vector()
+    this.side = Vector3.cross(this.forward, this.up)
+    this.side.normalize()
+    this.side.mul(1)
+    this.eye.add(this.side)
+    this.at.add(this.side)
+  }
+
+  panleft(alpha) {
+//     In your camera class, create a function called "panLeft":
+// Compute the forward vector  f = at - eye;
+  //debugger;
+  this.get_forward_vector()
+// Rotate the vector f by alpha (decide a value) degrees around the up vector.
+  //this.forward.add(tcohis.up);
+// Create a rotation matrix: rotationMatrix.setRotate(alpha, up.x, up.y, up.z). (Check)
+// Multiply this matrix by f to compute f_prime = rotationMatrix.multiplyVector3(f);
+  //rot_mat_left.setIdentity();
+  this.rot_mat.setRotate(alpha, this.up.elements[0], this.up.elements[1], this.up.elements[2])
+  var f_prime = this.rot_mat.multiplyVector3(this.forward)
+  //debugger;
+// Update the "at"vector to be at = eye + f_prime;
+    f_prime.add(this.eye)
+    this.at.set(f_prime)
+  }
+  panright(alpha) {
+    
+//     In your camera class, create a function called "panLeft":
+// Compute the forward vector  f = at - eye;
+  //debugger;
+  this.get_forward_vector()
+  // Rotate the vector f by alpha (decide a value) degrees around the up vector.
+    //this.forward.add(this.up);
+  // Create a rotation matrix: rotationMatrix.setRotate(alpha, up.x, up.y, up.z). (Check)
+  // Multiply this matrix by f to compute f_prime = rotationMatrix.multiplyVector3(f);
+    //rot_mat_left.setIdentity();
+    this.rot_mat.setRotate(-alpha, this.up.elements[0], this.up.elements[1], this.up.elements[2])
+    var f_prime = this.rot_mat.multiplyVector3(this.forward)
+    //debugger;
+  // Update the "at"vector to be at = eye + f_prime;
+      f_prime.add(this.eye)
+      this.at.set(f_prime)
+  }
+  pan_gen(x_alpha, y_alpha, x, y) {
+    
+    //     In your camera class, create a function called "panLeft":
+    // Compute the forward vector  f = at - eye;
+      //debugger;
+      this.get_forward_vector()
+      // Rotate the vector f by alpha (decide a value) degrees around the up vector.
+        //this.forward.add(this.up);
+      // Create a rotation matrix: rotationMatrix.setRotate(alpha, up.x, up.y, up.z). (Check)
+      // Multiply this matrix by f to compute f_prime = rotationMatrix.multiplyVector3(f);
+        //rot_mat_left.setIdentity();
+        this.rot_mat.setRotate(10,  x, y, this.up.elements[2])
+        var f_prime = this.rot_mat.multiplyVector3(this.forward)
+        //debugger;
+      // Update the "at"vector to be at = eye + f_prime;
+          f_prime.add(this.eye)
+          this.at.set(f_prime)
+      }
+}
 
 function setupWebGL() {
   // Retrieve <canvas> element
   canvas = document.getElementById('webgl');
-  console.log(canvas)
   // Get the rendering context for WebGL
   gl = getWebGLContext(canvas);
-  console.log(gl)
   gl.enable(gl.DEPTH_TEST);
   if (!gl) {
     console.log('Failed to get the rendering context for WebGL');
     return;
   }
 }
+var count=1;
 
+// var g_eye = [0, 0, 3]
+// var g_at = [0, 0, -100]
+// var g_up = [0, 1, 0]
+function keydown(ev) {
+  if (ev.keyCode==8) {
+    walls.pop()
+  }  
+  if (ev.keyCode==32) {
+    var newCube = new Cube([1,1,1,1])
+    newCube.matrix.translate(g_eye[0], g_eye[1], g_eye[2])
+    //console.log(newCube.matrix)
+    //console.log(pov)
+    //newCube.matrix.translate(g_at[0], g_at[1], 0)
+    //newCube.matrix.translate(g_up[0], g_up[1], 0)
+    walls.push(newCube)
+    count+=1
+  }
+  if (ev.keyCode==68) { //right
+    pov.right()
+    g_eye = pov.eye.elements;
+    g_at = pov.at.elements;
+  }
+  if (ev.keyCode==87) { //forward
+    pov.move_forward();
+    g_eye = pov.eye.elements;
+    g_at = pov.at.elements;
+  }
+  if (ev.keyCode==65) { //left
+    pov.left()
+    g_eye = pov.eye.elements;
+    g_at = pov.at.elements;
+  }
+  if (ev.keyCode==83) { //back
+    pov.move_backward()
+    g_eye = pov.eye.elements;
+    g_at = pov.at.elements;
+  }
+  if (ev.keyCode==81) {
+    pov.panleft(1)
+    g_at = pov.at.elements;
+    g_eye = pov.eye.elements;
+    g_up = pov.up.elements;
+    //debugger;
+  }
+  if (ev.keyCode==69) {
+    pov.panright(1)
+    g_at = pov.at.elements;
+    g_eye = pov.eye.elements;
+    g_up = pov.up.elements;
+  }
+  //renderScene()
+}
 
 function connectVariablesToGLSL() {
 
@@ -192,6 +421,7 @@ function connectVariablesToGLSL() {
 
 function addActionsforHTMLUI() {
   document.getElementById("rot_camX").value = 0;
+  document.onkeydown = keydown
   document.getElementById("rot_camX").addEventListener("mousemove", function (event) {
     if (event.buttons == 1) {
       radiansX = this.value;
@@ -202,7 +432,7 @@ function addActionsforHTMLUI() {
   document.getElementById("rot_camY").addEventListener("mousemove", function (event) {
     if (event.buttons == 1) {
       radiansY = this.value;
-    }
+    }  
   })
 
   document.getElementById("rot_camZ").value = 0;
@@ -213,50 +443,25 @@ function addActionsforHTMLUI() {
   })
 
 
-  document.getElementById("yellow_rot").addEventListener("mousemove", function (event) {
-
-    if (event.buttons == 1) {
-      yellow_rot = this.value;
-      //joints_only = true;
-      renderScene()
-
-    }
-  }
-  )
-
-
-
-  document.getElementById("yellow_rot").addEventListener("click", function (event) {
-    yellow_rot = this.value;
-    renderScene()
-  })
-
-
-  document.getElementById("pink_rot").addEventListener("mousemove", function (event) {
-
-    if (event.buttons == 1) {
-      pink_rot = this.value;
-      renderScene()
-
-    }
-  }
-  )
-
-
-  document.getElementById("pink_rot").addEventListener("click", function (event) {
-    pink_rot = this.value;
-    renderScene()
-  })
-
-
-
   document.getElementById("on").addEventListener("click", function (event) { 
-    console.log("True"); 
-    animation_on = true;
-  })
-  document.getElementById("off").addEventListener("click", function (event) { 
-    console.log("False")
-    animation_on = false;
+    game = true;
+    game_start = performance.now()
+    game_red_i = []
+    game_found_i = [false, false, false, false, false]
+    console.log(walls)
+    for (var r = 0; r < 5; r++) {
+      var rand_ind = Math.floor(Math.random() * (walls.length - 1))
+      console.log(walls[rand_ind])      
+      while (walls[rand_ind].game_red) { // While 
+        rand_ind = Math.random() * (walls.length - 1) 
+      }
+      game_red_i[r] = rand_ind
+      walls[rand_ind].game_red = true;   
+      walls[rand_ind].color = [1, 0, 0, 1];
+      
+    }
+    console.log(game_red_i)
+    blocks_found = 0; 
   })
 }
 function initTextures(image_src, texUnit) {
@@ -278,7 +483,6 @@ function initTextures(image_src, texUnit) {
 
 function  sendTextureToGLSL(image, texUnit) {
   
-  console.log(image)
   var texture = gl.createTexture(); 
   if(!texture) {
     console.log('Failed to create texture object'); 
@@ -306,360 +510,114 @@ function  sendTextureToGLSL(image, texUnit) {
 
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); 
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image); 
-  
-
-  console.log('finished loadTexture');
 }
-function initAnimal() {
-//   cube_Method = new Cube(
-//     color = [1.0, 0.0, 0.0, 1.0]
-//   );
-
-//   leftArm = new Cube(
-//     color = [1.0, 1.0, 0.0, 1.0]
-//   );
-
-//   box = new Cube(
-//     color = [1.0, 0.0, 1.0, 1.0]
-//   );
-  leg = new Limb([0,1,0,1])
-  leg2 = new Limb([0,1,0,1])
-  limb = new Limb([0,1,0,1])
-  limb2 = new Limb([0,1,0,1])
-  
-  // //render limbs
-  // //  leg
-  // leg.setUpLimb()
-  // //  leg2
-  // leg2.setUpLimb()
-  // //  limb2
-  // limb2.setUpLimb()
-  // //  limb
-  // limb.setUpLimb()
-  
-  limb.setUpLimb()
-  limb.scaleAll(.5, .5, .5)
-  limb.shoulder.matrix.translate(1.5, 0, 0)
-  limb.arm.matrix.translate(3, 0, 0)
-  limb.hand.matrix.translate(2.5, 0, 0)
-  limb2.setUpLimb()
-  limb2.scaleAll(.5, .5, .5)
-  leg.setUpLimb()
-  leg.shoulder.matrix.translate(0, -1, 0)
-  leg.arm.matrix.translate(0, -1, 0)
-  leg.hand.matrix.translate(0, -3.75, 0)
-  leg.scaleAll(.5, .5, .5)
-  leg.shoulder.matrix.scale(.65, 1, 1)
-  leg2.setUpLimb()
-  leg2.shoulder.matrix.translate(.75, 0, 0)
-  leg2.arm.matrix.translate(1.5, 0, 0)
-  leg2.hand.matrix.translate(1.25, 0, 0)
-
-  
-  leg2.shoulder.matrix.translate(0, -1, 0)
-  leg2.arm.matrix.translate(0, -1, 0)
-  leg2.hand.matrix.translate(0, -3.75, 0)
-  leg2.scaleAll(.5, .5, .5)
-  leg2.shoulder.matrix.scale(.65, 1, 1)
-  torso = new Cube([0, 1, 0, 1])
-  torso.matrix.translate(.2, .1, 0)
-  torso.matrix.scale(.35, .8, .25)
-  //limb2.setUpLimb()
-  pyr = new Pyramid([1, 0, 0, 1])
-  pyr.matrix.translate(0.2, 0.7,0.0)
-  pyr.matrix.scale(.5, .5, .5)
-  
-  
-  cube.matrix.translate(.7, .2, -.2)
-  cube.matrix.scale(.25,.25,.25)
-  cube2.matrix.translate(0, -.75, 0)
-  cube2.matrix.scale(10,0, 10)
-  //cube2.matrix.translate(.5, 0, -.5)
-  //cube2.matrix.translate(-.7, 0, 0)
-  //cube2.matrix.scale(.3, .3, .3)
-
-  cube3.matrix.scale(1000, 1000, 1000)
-  //cube3.matrix.translate(50,50,50)
-  frag_cube.matrix.scale(.5, .5, .5)
-  frag_cube.matrix.translate(3.9, .2, -3)
-
-
-//yep!
+var coin_flip2;
+function f_g_map() {
+  rand = 5
+  for (var a = 0; a < g_map.length; a++) {
+    for (var b = 0; b < g_map.length; b++) {
+        coin_flip = Math.floor(Math.random() * 2);
+        if (g_map[a][b] == 1) {
+          //make another for loop to add walls
+          for (var x = 0; x < 2; x++) {
+            var body = new Cube()
+            body.color = [1,1,1,1]
+            body.matrix.translate(a-4,x,b-8)
+            walls.push(body)
+          }
+        }
+    }
+  }
 }
+//array of red_true indices would help
+//for each item in red_true indices check if there's collision
+//I have that
 
-let cube = new Cube(color=[1,0,0,1])
-let cube2 = new Cube(color=[1,0,0,1])
-let cube3 = new Cube(color=[0,0,1,1]) //sky
-let frag_cube = new Cube(color=[0,0,1,1],tex=-1)
+var x;
+var y;
+var z;
+function check_collision() {
+  //debugger;
+  var c; //how many true
+  result = false;
+  var ret_list = []
+  for (var g = 0; g < game_red_i.length; g++) {
+    c = 0;
+    var index = game_red_i[g];
+    x = walls[index].matrix.elements[12]
+    y = walls[index].matrix.elements[13] 
+    z = walls[index].matrix.elements[14]
+    console.log("x y z: ", walls[index].matrix.elements.slice(12, 15))
+    console.log("eye: ", pov.eye.elements)
+    console.log("at: ", pov.at.elements);
+    console.log("up: ", pov.up.elements)
+    var neg = pov.eye.elements[2] * -1
+    console.log("Diff: ",    Math.abs(pov.eye.elements[0] - x),    Math.abs(pov.eye.elements[0] - x))
+    if (Math.abs(pov.eye.elements[0] - x) <= 3) {
+      c++;
+    }
+    if (Math.abs(neg - y) <= 3) {
+      c++
+    }
+    console.log("c: ", c)
+    if (c == 2 && !game_found_i[g]) {
+      console.log("You found a block! You have found ", blocks_found + 1, "so far.")
+      game_found_i[g] = true
+      console.log(game_found_i)
+      blocks_found++;
+      walls[index].game_red = false;
+      walls[index].color = [1,1,1,1];
+      ret_list.push([index, g])
+    }
+  }
+  return ret_list;
 
-
-
+}
 function renderScene() {
   //global matrix set up
   //clear canvas  
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.clear(gl.COLOR_BUFFER_BIT);
-  
-  var projMat = new Matrix4()
-  projMat.setIdentity()
   projMat.setPerspective(50, 1*canvas.width/canvas.height, 1, 100);
   gl.uniformMatrix4fv(u_ProjectionMatrix, false, projMat.elements);
-
-  var viewMat = new Matrix4()
-  //viewMat.setIdentity();
   viewMat.setLookAt(
-    0, 0, 1, 
-    0, 0, -100, 
-    0, 3, 0
-  )
+    g_eye[0],g_eye[1],g_eye[2], 
+    g_at[0], g_at[1], g_at[2], 
+    g_up[0],  g_up[1],  g_up[2]
+  ) //the rows of the above matrix represent: eye, at, and up, respectively
   gl.uniformMatrix4fv(u_ViewMatrix, false,viewMat.elements);
-
-  globalRotateMatrix.setIdentity();
+  globalRotateMatrix.setIdentity()
   globalRotateMatrix.rotate(radiansX, 1, 0, 0);
   globalRotateMatrix.rotate(radiansY, 0, 1, 0);
-  globalRotateMatrix.rotate(radiansZ, 0, 0, 1);
-  
+  globalRotateMatrix.rotate(radiansZ, 0, 0, 1);  
   gl.uniformMatrix4fv(u_globalRotateMatrix, false, globalRotateMatrix.elements);
   gl.uniform1i(u_whichTexture, 0);
   gl.uniform1i(u_Sampler0, 1);
   cube.render() 
-  //cube2 = new Cube()
-  //cube.render()
   gl.uniform1i(u_whichTexture, -1);
-  // cube2.matrix.translate(-.2, 0, 0)
   cube2.render()
-
   gl.uniform1i(u_whichTexture, 0);
   gl.uniform1i(u_Sampler0, 0);
   cube3.render();
   gl.uniform1i(u_whichTexture, -2);
-  //gl.uniform1i(u_Sampler0, -1);
   frag_cube.render()
-  //render limbs
-  // limb2.renderLimb()
-  // limb.renderLimb()
-  // limb2.renderLimb()
-  // leg.renderLimb()
-  // leg2.renderLimb()
-  // torso.render()
-  // pyr.render()
-  //limb.scaleAll(3, 3, 3)
-  //pyramid
-  // var red1 = new Pyramid([0, 1, 0, 1])  
-  // red1.matrix.scale(.5, .5, .5)
-  // red1.matrix.rotate(90, 1, 0, 0)
-  // red1.matrix.translate(0, 3, 0)
-  // red1.drawFace()
-  // var blue = new Pyramid([0, 1, 0, 1])
-  // blue.matrix.rotate(-90, 0, 1, 0)
-  // blue.matrix.rotate(-90, 0, 1, 0);   
-  // blue.matrix.scale(.5, .5, .5);
-  // blue.matrix.rotate(90, 0, 1, 0);  
-  // var blue_matrix = new Matrix4(blue.matrix)
-  // blue.matrix.rotate(-30, 1, 0, 0);  
-  // blue.matrix.translate(0, 3, 0)
-  // blue.drawTriangleIn3D([
-  //   0.0, 0.0, 0.0, 
-  //   .5, 1.0, 0.0,
-  //   1.0, 0.0, 0.0]);
-  // var pink = new Pyramid([0, 1, 0, 1])
-  // pink.matrix.set(blue_matrix);
-  // pink.matrix.rotate(90, 0, 1, 0);
-  // var pink_mat = new Matrix4(pink.matrix)
-  // pink.matrix.rotate(30, 1, 0, 0)
-  // pink.drawTriangleIn3D([
-  //   0.0, 0.0, 0.0, 
-  //   .5, 1.0, 0.0,
-  //   1.0, 0.0, 0.0]);
-  // var yellow = new Pyramid([0, 1, 0, 1])
-  // yellow.matrix.set(pink_mat)
-  // yellow.matrix.rotate(90, 0, 1, 0)
-  // yellow.matrix.translate(3, 0, 1)
-  // yellow.matrix.rotate(-30, 1, 0, 0)
-  // yellow.drawTriangleIn3D([
-  //   0.0, 0.0, 0.0, 
-  //   .5, 1.0, 0.0,
-  //   1.0, 0.0, 0.0]);
-  // var green = new Pyramid([0, 1, 0, 1])
-  // green.matrix.set(pink_mat)
-  // green.matrix.translate(0, 0, 1)
-  // green.matrix.rotate(-30, 1, 0, 0)
-  // green.drawTriangleIn3D([
-  //   0.0, 0.0, 0.0, 
-  //   .5, 1.0, 0.0,
-  //   1.0, 0.0, 0.0]);
-  
-
-  // updateAnimationAngles(g_seconds, limb2.arm, yellow_rot);
-
-  //limb2.arm.render()
-
-  // updateAnimationAngles(g_seconds, limb2.hand, pink_rot);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  // //pyramid
-  // var red1 = new Pyramid([0, 1, 0, 1])  
-  // red1.matrix.scale(.5, .5, .5)
-  // red1.matrix.rotate(90, 1, 0, 0)
-  // red1.drawFace()
-  // var blue = new Pyramid([0, 1, 0, 1])
-  // blue.matrix.rotate(-90, 0, 1, 0)
-  // blue.matrix.rotate(-90, 0, 1, 0);   
-  // blue.matrix.scale(.5, .5, .5);
-  // blue.matrix.rotate(90, 0, 1, 0);  
-  // var blue_matrix = new Matrix4(blue.matrix)
-  // blue.matrix.rotate(-30, 1, 0, 0);  
-  // blue.drawTriangleIn3D([
-  //   0.0, 0.0, 0.0, 
-  //   .5, 1.0, 0.0,
-  //   1.0, 0.0, 0.0]);
-  // var pink = new Pyramid([0, 1, 0, 1])
-  // pink.matrix.set(blue_matrix);
-  // pink.matrix.rotate(90, 0, 1, 0);
-  // var pink_mat = new Matrix4(pink.matrix)
-  // pink.matrix.rotate(30, 1, 0, 0)
-  // pink.drawTriangleIn3D([
-  //   0.0, 0.0, 0.0, 
-  //   .5, 1.0, 0.0,
-  //   1.0, 0.0, 0.0]);
-  // var yellow = new Pyramid([0, 1, 0, 1])
-  // yellow.matrix.set(pink_mat)
-  // yellow.matrix.rotate(90, 0, 1, 0)
-  // yellow.matrix.translate(-1, 0, 1)
-  // yellow.matrix.rotate(-30, 1, 0, 0)
-  // yellow.drawTriangleIn3D([
-  //   0.0, 0.0, 0.0, 
-  //   .5, 1.0, 0.0,
-  //   1.0, 0.0, 0.0]);
-  // var green = new Pyramid([0, 1, 0, 1])
-  // green.matrix.set(pink_mat)
-  // green.matrix.translate(0, 0, 1)
-  // green.matrix.rotate(-30, 1, 0, 0)
-  // green.drawTriangleIn3D([
-  //   0.0, 0.0, 0.0, 
-  //   .5, 1.0, 0.0,
-  //   1.0, 0.0, 0.0]);
-  
-
-  // green = new Pyramid([1, 0, 0, 1])
-  // pyr.matrix.scale(.5, .5, .5)
-  // pyr.render()
-  //limb2.hand.render()
-  //sphere.render()
-  //arm
-  // Remember, the matrix of each part of a limb is dependent on the part before it
-//there I've already made an improvement :) // yea!
-
-// you should have a funciton like updateAnimationAngles in your limb class
-// you should also keep the matrices of the joints in there
-// as well as the angles
-// that way, you can easily modify them in the main file
-//I am already doing that :(
-// are you sure? here lemme give you a template of what i mean
-
-
-  // a hand's matrix depends on the 
-  //fo re arm, the fore arm depends on the upper arm, and the upper arm depends on the shoulder
-  // it is fine to allocate memory here (you might just need to, either that or you create your arm matrices
-  // as members of the class)
-
-  // so don't set identity... wait but you need to know what matrices they are all dependent on
-  // limb2.arm.matrix.setIdentity();  //i think this one is fine... cuz im not sure what the matrices should start out with. 
-  //they are set up in a separate function so I think setting the identity was a mistake  // but every time render scene is called, they need to be reset...a
-  //oh
-  //
-  // refer to the video tutorial, or back track if you need to
-
-    //sdnepe
-  //my current problem is that my joint rotator isn't doing it right
-  //my current problem is that my joint rotator isn't doing it right
-  //my current problem is that my joint rotator isn't doing it right
-  //my current problem is that my joint rotator isn't doing it right
-  //my current problem is that my joint rotator isn't doing it right
-  //var arm_mat = new Matrix4(limb2.arm.matrix);
-  //arrian my arm isn't rendering
-  
-  
-  
-  //ARM1
-
-  // leftArm.matrix.setIdentity();
-  // leftArm.matrix.translate(0, -.5, 0.0); 
-  // leftArm.matrix.rotate(-5, 1, 0, 0);
-  
-  //  limb2
-  //limb2.renderLimb()
-  //updateAnimationAngles(g_seconds, limb2.arm, yellow_rot)
-  // updateAnimationAngles(g_seconds, leftArm, yellow_rot);
-  // var arm_mat = new Matrix4(leftArm.matrix);
-  // leftArm.matrix.scale(0.25, .7, .5);
-  // leftArm.matrix.translate(0.0, 0.25, 0);
-  // leftArm.render();
-  // //hand
-  // box.matrix.set(arm_mat);
-  // box.matrix.translate(0, .65, 0); 
-  // box.matrix.scale(.3, .3, .3); 
-  // box.matrix.translate(0.0, 0, .001);
-  // updateAnimationAngles(g_seconds, box, pink_rot);
-  // box.render()
-
-  //arm2
-  
-  //render limbs
-  //  leg
-  //leg.renderLimb()
-  //  leg2
-  //leg2.renderLimb()
-  //  limb
-  //limb.renderLimb()
-  
-  
+  if (game) {
+    console.log("Collision Check")
+    var ret = check_collision();  
+    console.log("Collision Check Complete")
+  }
+  for (var w = 0; w < walls.length; w++) {
+    if (game && walls[w].game_red) {
+      walls[w].color = [1,0,0,1]
+    }
+    walls[w].render()
+  }
 }
 
 let frames_rendered = 0;
+
+var game_time;
+var game_win = false;
 function tick() {
   g_seconds = (performance.now() / 1000) - (g_startTime)
   renderScene()
@@ -668,9 +626,26 @@ function tick() {
 
   let duration = performance.now() - start_time;
   frames_rendered += 1;
-  sendTextToHTML(
-                " ms: " + Math.floor(duration) +
-                " fps: " + Math.floor(1000* frames_rendered/duration), "perf");
+  if (!game) {
+    var text = "No Game\n"
+  } else {
+    game_time = 30 - Math.floor((performance.now() - game_start) / 1000);
+    var text = "Time Left: " + game_time + "\n" + "Blocks to Find: " + blocks_found + "/" + 5 + "\n"
+  }
+  if (game_win) {
+    text += "\nYou won the last time you played the game!"
+  } else {
+    text += "\nYou either haven't tried yet or lost the last time you played this game!"
+  }
+  sendTextToHTML(text + " fps: " + Math.floor(1000* frames_rendered/duration), "perf");
+  if (blocks_found == 5) {
+    game = false;
+    game_win = true;
+  }  else if (game_time == 0) {
+    game = false
+    game_win = false
+  }
+
 }
 
 function updateAnimationAngles(secs, cube_obj, angle) {   
@@ -683,7 +658,9 @@ function updateAnimationAngles(secs, cube_obj, angle) {
 
 
 
+f_g_map();
 function main() {
+  
   start_time = performance.now();
   // var performance;
   setupWebGL();
@@ -694,22 +671,41 @@ function main() {
   initTextures("./src/sky.jpg", 0);
   initTextures("./src/mona.webp", 1);
 
+  
+  cube.matrix.translate(.7, .2, -.2)
+  cube.matrix.scale(.25,.25,.25)
+  cube2.matrix.translate(0, -.75, 0)
+  cube2.matrix.scale(60,0, 60)
+
+  cube3.matrix.scale(60, 50, 60)
+  frag_cube.matrix.scale(.5, .5, .5)
+  frag_cube.matrix.translate(3.9, .2, -3)
 
   gl.clearColor(0.0, 0.0, 0.0, 1.0);  
   gl.clear(gl.COLOR_BUFFER_BIT);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  document.onkeydown = keydown;
   
-  initAnimal();
-  renderScene();
-  requestAnimationFrame(tick);  
-  
- if (canvas.ev == 1) {
+  if (canvas.ev == 1) {
     var preserveDrawingBuffer = true
     gl = canvas.getContext("webgl", { preserveDrawingBuffer: true});
     click()
   }
+  
+  pov = new Camera()
   canvas.onmousedown = click;
-  canvas.onmousemove = function(ev) {if(ev.buttons==1) {click(ev)}}
+  canvas.on
+  canvas.onmousemove = function(ev) { 
+    if(ev.buttons==1) {
+      click(ev)
+    }
+  canvas.onmousedown = function(ev) {click(ev)}
+  }
+  wall_mat = new Matrix4();
+  
+  renderScene();
+  requestAnimationFrame(tick);  
+  
 }
 
 
@@ -722,34 +718,18 @@ function sendTextToHTML(text, htmlID){
   htmllm.innerHTML = text;
 }
 function click(ev) {
-  //console.log(canvas.width);
-  //console.log(width);
-  var width = 400
-  var height = 400
   var rect = ev.target.getBoundingClientRect();  
   var x = ev.clientX; // x coordinate of a mouse pointer
   var y = ev.clientY; // y coordinate of a mouse pointer
-  // //var z = ev.clientZ; // z coord?
-  x = ((x - rect.left) - width / 2)/(width / 2);
-  y = (height / 2 - (y - rect.top))/(height / 2);
-  radiansX =  y * 360;
-  radiansY =  x * 360;
-  //console.log("Radians X:", radiansX, "\nRadians Y: ", radiansY);
-  
-  //console.log("x:", x, "\ny: ", y);
-  //renderScene()
-  // if (choose_shape == 1) {
-  //   tri_type = document.getElementById("tri_type").value
-  //   console.log("Tri_type outside", tri_type)
-  //   point = new Triangle(color=color_storage.slice(),size=selected_Size,position=[x, y],vertices=[],tri_type)
-  // } else if (choose_shape == 0){
-  //   point = new Point(color_storage.slice(), selected_Size, [x, y])
-  // } else {
-  //   point = new Circle(color=color_storage.slice(), size=selected_Size, position=[x, y], segments)
-  //   // draw Circle
-  // }
-  //g_shapes_list.push(point)
-  //console.log(point)
-  renderScene()
-  
+  x = ((x - rect.left) - 400 / 2)/200;
+  y = (400 / 2 - (y - rect.top))/200;
+  var radiansX =  y * 360;
+  var radiansY =  x * 360;
+  pov.pan_gen(x, y, radiansX, radiansY)
+  g_at = pov.at.elements;
+  g_eye = pov.eye.elements;
+  g_up = pov.up.elements;
+  renderScene()  
+
 }
+

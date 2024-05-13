@@ -3,14 +3,18 @@
 class Cube {
     constructor(color=[1.0,1.0,1.0,1.0],tex=-1){
       this.type = 'cube';
+      this.game_red = false;
       this.color = color;
-    //   this.position = position;
       this.vertices = this.initVertexArray();
+      this.vertices32 = new Float32Array(this.initVertexArray())
+      this.normal_vertices = this.getNormalVertices()
+      this.normal_vertices32 = new Float32Array(this.normal_vertices)
       this.matrix = new Matrix4();
-      this.drawMatrix = new Matrix4();
+      //this.drawMatrix = new Matrix4();
       this.textureNum=tex;
       this.u_whichTexture
-     // var u_whichTexture;
+      this.uv = []
+      this.vertexBuffer = null;
     }
 
     // In initVertexArray, specify the texture coordinates (draw it out)
@@ -70,49 +74,6 @@ class Cube {
             -0.5,  0.5,  0.5,           0,1,
             -0.5,  0.5, -0.5,           0,0,
         ];
-        
-        let old_verts = [
-            -0.5, -0.5, -0.5,        
-             0.5, -0.5, -0.5,  
-             0.5,  0.5, -0.5,  
-             0.5,  0.5, -0.5,
-            -0.5,  0.5, -0.5,
-            -0.5, -0.5, -0.5, 
-
-            -0.5, -0.5,  0.5,
-             0.5, -0.5,  0.5,
-             0.5,  0.5,  0.5,
-             0.5,  0.5,  0.5,
-            -0.5,  0.5,  0.5,
-            -0.5, -0.5,  0.5,
-
-            -0.5,  0.5,  0.5,
-            -0.5,  0.5, -0.5,
-            -0.5, -0.5, -0.5, 
-            -0.5, -0.5, -0.5, 
-            -0.5, -0.5,  0.5,
-            -0.5,  0.5,  0.5,
-
-             0.5,  0.5,  0.5,
-             0.5,  0.5, -0.5,
-             0.5, -0.5, -0.5,
-             0.5, -0.5, -0.5,
-             0.5, -0.5,  0.5,
-             0.5,  0.5,  0.5,
-
-            -0.5, -0.5, -0.5, 
-             0.5, -0.5, -0.5,
-             0.5, -0.5,  0.5,
-             0.5, -0.5,  0.5,
-            -0.5, -0.5,  0.5,
-            -0.5, -0.5, -0.5, 
-
-            -0.5,  0.5, -0.5,
-             0.5,  0.5, -0.5,
-             0.5,  0.5,  0.5,
-             0.5,  0.5,  0.5,
-            -0.5,  0.5,  0.5,
-            -0.5,  0.5, -0.5];
         return vertices;
     }
     getNormalVertices() {
@@ -174,15 +135,18 @@ class Cube {
             0,0,0,1]);
     }
 
-    drawTriangleIn3D(vertices) {
+    drawTriangleIn3D(float32vertices) {
         //var verts = this.getNormalVertices()
-        vertices = new Float32Array(vertices);
-        var n = vertices.length / 5;
+        // float32vertices = new Float32Array(float32vertices);
+        var n = float32vertices.length / 5;
         // Create a buffer object
-        var vertexBuffer = gl.createBuffer();
-        if (!vertexBuffer) {
-        console.log('Failed to create the buffer object');
-        return -1;
+        if (this.vertexBuffer == null) {
+            this.vertexBuffer = gl.createBuffer();
+        
+            if (!this.vertexBuffer){
+                console.log('Failed to create the buffer object');
+                return -1;
+            }
         }
 
         // var a_Position = gl.getAttribLocation(gl.program, 'a_Position');
@@ -206,12 +170,12 @@ class Cube {
         // Pass the size of a point to u_Size variable
 
         // Bind the buffer object to target
-        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
 
         // Write date into the buffer object
-        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.DYNAMIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, float32vertices, gl.DYNAMIC_DRAW);
 
-        let FSIZE = vertices.BYTES_PER_ELEMENT;
+        let FSIZE = float32vertices.BYTES_PER_ELEMENT;
 
         // Assign the buffer object to a_Position variable
         // -0.5, -0.5, -0.5,    0.0, 1.0, // First Vertex
@@ -257,7 +221,7 @@ class Cube {
         gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
 
         // Write date into the buffer object
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.DYNAMIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, this.vertices32, gl.DYNAMIC_DRAW);
 
         // Assign the buffer object to a_Position variable
         gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, 0, 0);
@@ -292,36 +256,35 @@ class Cube {
     
     }
 
-    drawNormalTriangleIn3D() {
-        
-        var verts = this.initVertexArray()
-        var vertices = new Float32Array(verts)
-        var n = vertices.length / 3;
+    drawNormalTriangleIn3D(float32vertices) {
+        var n = float32vertices.length / 3;
         // Create a buffer object
-        var vertexBuffer = gl.createBuffer();
-        if (!vertexBuffer) {
-        console.log('Failed to create the buffer object');
-        return -1;
+
+        if (this.vertexBuffer == null) {
+            this.vertexBuffer = gl.createBuffer();
+        
+            if (!this.vertexBuffer){
+                console.log('Failed to create the buffer object');
+                return -1;
+            }
         }
 
-        var a_Position = gl.getAttribLocation(gl.program, 'a_Position');
-        if (a_Position < 0) {
-           console.log('Failed to get the storage location of a_Position');
-           return -1;
-         }
+        // var a_Position = gl.getAttribLocation(gl.program, 'a_Position');
+        // if (a_Position < 0) {
+        //    console.log('Failed to get the storage location of a_Position');
+        //    return -1;
+        //  }
         
         var rgba = this.color
-        console.log(rgba)
-        //gl.uniform4f(u_FragColor, rgba[0], rgba[1], rgba[2], rgba[3]);
         gl.uniformMatrix4fv(u_ModelMatrix, false, this.matrix.elements);
 
         // Pass the size of a point to u_Size variable
 
         // Bind the buffer object to target
-        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
 
         // Write date into the buffer object
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.DYNAMIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, float32vertices, gl.DYNAMIC_DRAW);
 
         // Assign the buffer object to a_Position variable
         gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, 0, 0);
@@ -337,9 +300,9 @@ class Cube {
 
     render() {        
         if (this.textureNum == -2) {
-            this.drawNormalTriangleIn3D(this.vertices);
+            this.drawNormalTriangleIn3D(this.normal_vertices32);// actually nvm
         } else {
-            this.drawTriangleIn3D(this.vertices);
+            this.drawTriangleIn3D(this.vertices32);
         }
     }
 

@@ -8,10 +8,6 @@ class Pyramid {
       this.vertices = this.initVertexArray()
       this.matrix = new Matrix4()
       this.drawMatrix = new Matrix4()
-      //this.face1 = new TriFace(color=[0, 0, 1, 1], vertices=[0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.5, 0.0, 0.0]);
-    //   this.face2 = new TriFace([1, 0, 1, 1]);
-    //   this.face3 = new TriFace([0, 1, 1, 1]);
-    //   this.face4 = new TriFace([1, 1, 0, 1]);
     }
 
     initVertexArray(){
@@ -69,11 +65,11 @@ class Pyramid {
         return -1;
         }
 
-        // var a_Position = gl.getAttribLocation(gl.program, 'a_Position');
-        // if (a_Position < 0) {
-        //    console.log('Failed to get the storage location of a_Position');
-        //    return -1;
-        //  }
+        var a_Position = gl.getAttribLocation(gl.program, 'a_Position');
+        if (a_Position < 0) {
+            console.log('Failed to get the storage location of a_Position');
+            return -1;
+        }
         
         var rgba = this.color
         gl.uniform4f(u_FragColor, rgba[0], rgba[1], rgba[2], rgba[3]);

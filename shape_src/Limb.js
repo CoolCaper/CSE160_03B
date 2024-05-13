@@ -92,5 +92,14 @@ class Limb {
         this.shoulder.setIdentity()
         this.arm.setIdentity()
     }
+    rotateVector(vec, angle) {
+        var radians = (Math.PI / 180) * angle;
+        var cos = Math.cos(radians);
+        var sin = Math.sin(radians);
+        return [
+          Math.round(10000 * (vec[0] * cos - vec[1] * sin)) / 10000,
+          Math.round(10000 * (vec[0] * sin + vec[1] * cos)) / 10000
+        ];
+      }
 
 }
